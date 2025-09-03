@@ -7,7 +7,6 @@ from .models import question
 def index(request):
     return HttpResponse("hello world , you are at the polls index")
 
-
 def details(request,question_id):
     return HttpResponse("your looking at a question  %s."  % question_id)
 
