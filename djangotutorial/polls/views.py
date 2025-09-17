@@ -12,8 +12,9 @@ class IndexView(generic.ListView):
     context_object_name = "latest_question_list"
 
     def get_queryset(self):
-        """Return the last five published questions."""
-        return Question.objects.order_by("-pub_date")[:5]
+        """ Return the last five published questions (not including those set to be
+        published in the future)."""
+        return Question.objects.filter(pub_date__lte=timezone.now()).order_by("-pub_date")[:5]
 
 
 class DetailView(generic.DetailView):
@@ -26,46 +27,40 @@ class DetailView(generic.DetailView):
         """
         return Question.objects.filter(pub_date__lte=timezone.now())
 
-def votes(request, question_id):
-    # Get the question object or return 404 if not found
-    question = get_object_or_404(Question, pk=question_id)
+def vote(request, question_id):
+        # Get the question object or return 404 if not found
+        question = get_object_or_404(Question, pk=question_id)
 
-    try:
-        # Get the selected choice from POST data
-        selected_choice = question.choice_set.get(pk=request.POST["choice"])
-    except (KeyError, Choice.DoesNotExist):
-        # If no choice was selected or choice does not exist,
-        # re-render the detail page with an error message
-        return render(
-            request,
-            "polls/details.html",
-            {
-                "question": question,
-                "error_message": "You didn't select a choice.",
-            },
-        )
-    else:
-        # Increment the vote count using F() expression (safe for concurrency)
-        selected_choice.votes = F("votes") + 1
-        selected_choice.save()
-        selected_choice.refresh_from_db()
+        try:
+            # Get the selected choice from POST data
+            selected_choice = question.choice_set.get(pk=request.POST["choice"])
+        except (KeyError, Choice.DoesNotExist):
+            # If no choice was selected or choice does not exist,
+            # re-render the detail page with an error message
+            return render(
+                request,
+                "polls/details.html",
+                {
+                    "question": question,
+                    "error_message": "You didn't select a choice.",
+                },
+            )
+        else:
+            # Increment the vote count using F() expression (safe for concurrency)
+            selected_choice.votes = F("votes") + 1
+            selected_choice.save()
+            selected_choice.refresh_from_db()
 
-        # Redirect to the results page after successful vote submission
-        # (Prevents duplicate submissions if user hits Back/Refresh)
-        return HttpResponseRedirect(
-            reverse("polls:results", args=(question.id,))
-        )
-    
-class resultsView(generic.DetailView):
+            # Redirect to the results page after successful vote submission
+            # (Prevents duplicate submissions if user hits Back/Refresh)
+            return HttpResponseRedirect(
+                reverse("polls:results", args=(question.id,))
+            )
+
+
+class ResultsView(generic.DetailView):
     model=Question
     template_name="polls/results.html"
 
 
 
-
-def get_queryset(self):
-    """
-    Return the last five published questions (not including those set to be
-    published in the future).
-    """
-    return Question.objects.filter(pub_date__lte=timezone.now()).order_by("-pub_date")[:5]
